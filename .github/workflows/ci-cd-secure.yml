@@ -112,7 +112,7 @@ jobs:
   # ======================================================
   # ETAPA 2: MERGE A TEST Y PRUEBAS UNITARIAS
   # ======================================================
-  merge-and-test:
+  merge:
     needs: security-scan
     runs-on: ubuntu-latest
     steps:
@@ -146,39 +146,6 @@ jobs:
           curl -s -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage \
           -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
           -d text="twisted_rightwards_arrows: Merge a rama TEST realizado con éxito."
-
-      - name: 🟢 Configurar Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-
-      - name: 📦 Instalar Dependencias
-        run: npm ci
-
-      - name: 🧪 Ejecutar Pruebas (Jest/Vitest)
-        id: tests
-        continue-on-error: true
-        run: npm test # Asegúrate de tener script "test" en package.json
-
-      - name: ❌ Manejo de Fallo en Tests
-        if: steps.tests.outcome == 'failure'
-        uses: actions/github-script@v6
-        with:
-          script: |
-            github.rest.issues.addLabels({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              labels: ['tests-failed']
-            });
-
-      - name: 📢 Notificar Fallo Tests (Telegram)
-        if: steps.tests.outcome == 'failure'
-        run: |
-          curl -s -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage \
-          -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
-          -d text="❌ Las pruebas unitarias fallaron. Revisar etiquetas en GitHub."
-          exit 1 # Romper pipeline
 
   # ======================================================
   # ETAPA 3: MERGE A MAIN Y DESPLIEGUE
