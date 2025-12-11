@@ -163,27 +163,20 @@ jobs:
         run: |
           git config --global user.name 'GitHub Actions Bot'
           git config --global user.email 'actions@github.com'
+          
+          # 1. Asegurar que tenemos la info de main
           git fetch origin main
           git checkout main
-          git merge --no-ff test -m "Deploy: Merge test a main"
+          
+          # 2. Descargar explícitamente la rama test (que acabamos de probar)
+          git fetch origin test
+          
+          # 3. MERGE CON PERMISO DE HISTORIAS NO RELACIONADAS
+          # Esto une las ramas aunque hayan nacido separadas
+          git merge --no-ff origin/test --allow-unrelated-histories -m "Deploy: Merge test a main"
+          
+          # 4. Subir a producción
           git push origin main
-
-      # Construcción Docker como pide el PDF
-      - name: 🐳 Build Docker Image
-        run: |
-          docker build -t mi-app-segura:latest .
-          # Aquí iría el docker push si tuvieras DockerHub configurado
-          # docker login -u ... -p ...
-          # docker push mi-app-segura:latest
-
-      # Simulación de despliegue (puedes usar acción de Vercel/Render real aquí)
-      - name: 🚀 Despliegue en Producción (Simulado/Render/Vercel)
-        run: |
-          echo "Desplegando aplicación en proveedor cloud..."
-          # Ejemplo real si usaras Render:
-          # curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK }}
-          sleep 5 
-          echo "Despliegue exitoso."
 
       - name: 📢 Notificar Éxito Final (Telegram)
         run: |
