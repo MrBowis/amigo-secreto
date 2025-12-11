@@ -65,7 +65,7 @@ export default function Home() {
         <div className="flex gap-4 justify-center">
           <Link href="/signup">
             <Button size="lg" className="bg-green-600 hover:bg-green-700">
-              Comenzar Ahora
+              Comenzar
             </Button>
           </Link>
           <Link href="/login">
