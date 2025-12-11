@@ -125,10 +125,21 @@ jobs:
         run: |
           git config --global user.name 'GitHub Actions Bot'
           git config --global user.email 'actions@github.com'
-          git fetch origin test
-          git checkout test
-          git merge --no-ff ${{ github.head_ref }} -m "Auto-merge PR #${{ github.event.pull_request.number }} a test"
-          git push origin test
+          
+          # 1. Traemos la info de la rama destino (test)
+          git fetch origin ${{ github.base_ref }}
+          
+          # 2. Traemos explícitamente la info de la rama origen (dev)
+          git fetch origin ${{ github.head_ref }}
+          
+          # 3. Nos cambiamos a test
+          git checkout ${{ github.base_ref }}
+          
+          # 4. Mezclamos usando la referencia remota (origin/dev) que es más segura
+          git merge --no-ff origin/${{ github.head_ref }} -m "Auto-merge PR #${{ github.event.pull_request.number }} a test"
+          
+          # 5. Subimos cambios
+          git push origin ${{ github.base_ref }}
       
       - name: 📢 Notificar Merge Test
         run: |
