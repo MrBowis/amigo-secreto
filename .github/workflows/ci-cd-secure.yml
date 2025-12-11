@@ -151,7 +151,7 @@ jobs:
   # ETAPA 3: MERGE A MAIN Y DESPLIEGUE
   # ======================================================
   deploy-production:
-    needs: merge-and-test
+    needs: merge
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout
