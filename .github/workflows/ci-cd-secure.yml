@@ -168,12 +168,13 @@ jobs:
           git fetch origin main
           git checkout main
           
-          # 2. Descargar explícitamente la rama test (que acabamos de probar)
+          # 2. Descargar explícitamente la rama test
           git fetch origin test
           
-          # 3. MERGE CON PERMISO DE HISTORIAS NO RELACIONADAS
-          # Esto une las ramas aunque hayan nacido separadas
-          git merge --no-ff origin/test --allow-unrelated-histories -m "Deploy: Merge test a main"
+          # 3. MERGE CON ESTRATEGIA "THEIRS" (Gana Test)
+          # -X theirs: Resuelve conflictos usando el archivo que viene de 'test'
+          # --allow-unrelated-histories: Permite unir ramas creadas por separado
+          git merge --no-ff origin/test --allow-unrelated-histories -X theirs -m "Deploy: Merge test a main"
           
           # 4. Subir a producción
           git push origin main
