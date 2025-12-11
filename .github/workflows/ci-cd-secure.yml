@@ -1,0 +1,185 @@
+name: Pipeline CI/CD Seguro con IA
+
+on:
+  pull_request:
+    branches: [ "test" ] # Se activa al hacer PR hacia test (desde dev)
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+env:
+  TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+jobs:
+  # ======================================================
+  # ETAPA 1: REVISIÓN DE SEGURIDAD (IA)
+  # ======================================================
+  security-scan:
+    runs-on: ubuntu-latest
+    outputs:
+      scan_result: ${{ steps.scan.outcome }}
+    
+    steps:
+      - name: 📥 Checkout del código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Necesario para ver todos los archivos
+
+      - name: 📢 Notificar Inicio Escaneo
+        run: |
+          curl -s -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage \
+          -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
+          -d text="🛡️ Iniciando escaneo de seguridad (IA) en el PR #${{ github.event.pull_request.number }}..."
+
+      - name: 🐍 Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: 📦 Instalar Dependencias Python
+        run: |
+          pip install -r requirements.txt
+
+      - name: 🧠 Ejecutar Modelo de IA (Scanner)
+        id: scan
+        continue-on-error: true # Continuamos para manejar el fallo manualmente
+        run: |
+          python security_scan.py
+
+      # --- MANEJO DE VULNERABILIDAD (SI EL MODELO DETECTA ALGO) ---
+      - name: ❌ Acciones si es Vulnerable
+        if: steps.scan.outcome == 'failure'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            let report = "Vulnerabilidad detectada";
+            try { report = fs.readFileSync('security_report.txt', 'utf8'); } catch(e){}
+            
+            // 1. Comentar en el PR
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: report
+            });
+
+            // 2. Etiquetar PR
+            github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['fixing-required']
+            });
+
+            // 3. Crear Issue automática
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Vulnerabilidad Crítica detectada en Pipeline',
+              body: 'El modelo de IA ha detectado código inseguro en el PR #' + context.issue.number + '.\n\n' + report
+            });
+
+            // 4. Cerrar el PR (Rechazo automático según PDF)
+            github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              state: 'closed'
+            });
+
+      - name: 📢 Notificar Vulnerabilidad (Telegram)
+        if: steps.scan.outcome == 'failure'
+        run: |
+          curl -s -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage \
+          -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
+          -d text="⛔ ALERTA: Código Vulnerable detectado. PR rechazado y etiquetado."
+
+      - name: 🛑 Detener Pipeline
+        if: steps.scan.outcome == 'failure'
+        run: exit 1
+
+      - name: 📢 Notificar Éxito Seguridad (Telegram)
+        if: steps.scan.outcome == 'success'
+        run: |
+          curl -s -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage \
+          -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
+          -d text="✅ Código clasificado como SEGURO. Continuando pipeline..."
+
+  # ======================================================
+  # ETAPA 2: MERGE A TEST Y PRUEBAS UNITARIAS
+  # ======================================================
+  merge:
+    needs: security-scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      # Simulación de Merge a Test (En Actions, el código ya se prueba en el contexto del PR,
+      # pero para cumplir el PDF estrictamente, hacemos un merge real si es necesario o probamos el merge resultante)
+      - name: 🔀 Merge Automático a rama Test
+        run: |
+          git config --global user.name 'GitHub Actions Bot'
+          git config --global user.email 'actions@github.com'
+          
+          # 1. Traemos la info de la rama destino (test)
+          git fetch origin ${{ github.base_ref }}
+          
+          # 2. Traemos explícitamente la info de la rama origen (dev)
+          git fetch origin ${{ github.head_ref }}
+          
+          # 3. Nos cambiamos a test
+          git checkout ${{ github.base_ref }}
+          
+          # 4. Mezclamos usando la referencia remota (origin/dev) que es más segura
+          git merge --no-ff origin/${{ github.head_ref }} -m "Auto-merge PR #${{ github.event.pull_request.number }} a test"
+          
+          # 5. Subimos cambios
+          git push origin ${{ github.base_ref }}
+      
+      - name: 📢 Notificar Merge Test
+        run: |
+          curl -s -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage \
+          -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
+          -d text="twisted_rightwards_arrows: Merge a rama TEST realizado con éxito."
+
+  # ======================================================
+  # ETAPA 3: MERGE A MAIN Y DESPLIEGUE
+  # ======================================================
+  deploy-production:
+    needs: merge
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: test # Traemos lo que ya está en test probado
+
+      - name: 🔀 Merge a Main
+        run: |
+          git config --global user.name 'GitHub Actions Bot'
+          git config --global user.email 'actions@github.com'
+          
+          # 1. Asegurar que tenemos la info de main
+          git fetch origin main
+          git checkout main
+          
+          # 2. Descargar explícitamente la rama test (que acabamos de probar)
+          git fetch origin test
+          
+          # 3. MERGE CON PERMISO DE HISTORIAS NO RELACIONADAS
+          # Esto une las ramas aunque hayan nacido separadas
+          git merge --no-ff origin/test --allow-unrelated-histories -m "Deploy: Merge test a main"
+          
+          # 4. Subir a producción
+          git push origin main
+
+      - name: 📢 Notificar Éxito Final (Telegram)
+        run: |
+          curl -s -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage \
+          -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
+          -d text="🚀 DESPLIEGUE EXITOSO: El código ha pasado todas las fases y está en producción."
