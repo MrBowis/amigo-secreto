@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { participantService, ParticipantEvent } from '@/lib/participantApi';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Gift, Mail, User, Calendar } from 'lucide-react';
 import Link from 'next/link';
 
-export default function MyDrawsPage() {
+function MyDrawsContent() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState(searchParams.get('email') || '');
   const [events, setEvents] = useState<ParticipantEvent[]>([]);
@@ -184,5 +184,23 @@ export default function MyDrawsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function MyDrawsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-linear-to-b from-red-50 to-white">
+        <div className="container mx-auto px-4 py-16">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center">
+              <h1 className="text-4xl font-bold text-red-700 mb-4">Cargando...</h1>
+            </div>
+          </div>
+        </div>
+      </div>
+    }>
+      <MyDrawsContent />
+    </Suspense>
   );
 }
