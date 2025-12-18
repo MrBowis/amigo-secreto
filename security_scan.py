@@ -84,8 +84,12 @@ def escanear_directorio():
             glob.glob('**/*.js', recursive=True) + \
             glob.glob('**/*.jsx', recursive=True)
     
-    # Filtrar carpetas que no son código fuente
-    files = [f for f in files if 'node_modules' not in f and '.next' not in f and '.git' not in f]
+    # Filtrar carpetas que no son código fuente y archivos de prueba
+    files = [f for f in files if 'node_modules' not in f 
+             and '.next' not in f 
+             and '.git' not in f
+             and '__test__' not in f
+             and not any(f.endswith(ext) for ext in ['.test.ts', '.test.tsx', '.test.js', '.test.jsx'])]
 
     print(f"🔍 Analizando {len(files)} archivos de código fuente...\n")
 
