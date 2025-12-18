@@ -46,6 +46,11 @@ export function Header() {
                     Sorteos
                   </Button>
                 </Link>
+                <Link href={`/my-draws?email=${encodeURIComponent(user.email || '')}`}>
+                  <Button variant="ghost" className="text-purple-700 hover:text-purple-800 hover:bg-purple-50">
+                    Mis Sorteos
+                  </Button>
+                </Link>
                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 text-red-700">
                   <User className="h-4 w-4" />
                   <span className="text-sm font-medium">{user.email}</span>
