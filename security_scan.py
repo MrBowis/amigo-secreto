@@ -89,6 +89,8 @@ def escanear_directorio():
              and '.next' not in f 
              and '.git' not in f
              and '__test__' not in f
+             and 'notebook' not in f
+             and 'recursos' not in f
              and not any(f.endswith(ext) for ext in ['.test.ts', '.test.tsx', '.test.js', '.test.jsx'])]
 
     print(f"🔍 Analizando {len(files)} archivos de código fuente...\n")
