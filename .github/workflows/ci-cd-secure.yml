@@ -147,6 +147,38 @@ jobs:
           -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
           -d text="twisted_rightwards_arrows: Merge a rama TEST realizado con éxito."
 
+      - name: 🟢 Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 📦 Instalar dependencias
+        run: npm ci
+
+      - name: 🧪 Ejecutar pruebas unitarias
+        id: run-tests
+        continue-on-error: true
+        run: npm test -- --runInBand
+
+      - name: 📢 Notificar Pruebas Éxitosas (Telegram)
+        if: steps.run-tests.outcome == 'success'
+        run: |
+          curl -s -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage \
+          -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
+          -d text="✅ Pruebas unitarias exitosas. No se encontraron errores. Avanzando a Etapa 3."
+
+      - name: 📢 Notificar Pruebas Fallidas (Telegram)
+        if: steps.run-tests.outcome == 'failure'
+        run: |
+          curl -s -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage \
+          -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
+          -d text="⛔ Error en pruebas unitarias. Pipeline detenido antes de Etapa 3."
+
+      - name: 🛑 Detener Pipeline por Fallo en Pruebas
+        if: steps.run-tests.outcome == 'failure'
+        run: exit 1
+
   # ======================================================
   # ETAPA 3: MERGE A MAIN Y DESPLIEGUE
   # ======================================================

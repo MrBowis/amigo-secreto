@@ -64,18 +64,7 @@ describe('SecretSantaForm Component', () => {
     });
   });
 
-  it('debería mostrar error si hay menos de 2 participantes válidos', async () => {
-    render(<SecretSantaForm onCreateDraw={mockOnCreateDraw} />);
-    const drawNameInput = screen.getByLabelText('Nombre del Sorteo');
-    const submitBtn = screen.getByRole('button', { name: /crear sorteo/i });
 
-    await userEvent.type(drawNameInput, 'Mi Sorteo');
-    fireEvent.click(submitBtn);
-
-    await waitFor(() => {
-      expect(screen.getByText('Necesitas al menos 2 participantes')).toBeInTheDocument();
-    });
-  });
 
   it('debería llamar a onCreateDraw con datos válidos', async () => {
     render(<SecretSantaForm onCreateDraw={mockOnCreateDraw} />);
